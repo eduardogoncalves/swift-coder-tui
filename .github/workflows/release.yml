@@ -1,0 +1,102 @@
+name: Release Swift Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload assets to (leave empty for dry run)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_archive:
+    if: github.repository == 'eduardogoncalves/swift-coder-tui'
+    runs-on: macos-15
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+
+      - name: Set up Swift 6.3.1
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.3.1'
+
+      - name: Show toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve package dependencies
+        run: swift package resolve
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Test
+        run: swift test -c release
+
+      - name: Create source archive
+        id: archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          if [ -z "$version" ]; then
+            version="dry-run"
+          fi
+
+          mkdir -p .build/release-artifacts
+          archive_path="$PWD/.build/release-artifacts/swift-coder-tui-${version}.zip"
+
+          swift package archive-source --output "$archive_path"
+          shasum -a 256 "$archive_path" > "$archive_path.sha256"
+
+          echo "archive_path=$archive_path" >> "$GITHUB_OUTPUT"
+          echo "checksum_path=$archive_path.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-package-release-artifacts
+          path: |
+            ${{ steps.archive.outputs.archive_path }}
+            ${{ steps.archive.outputs.checksum_path }}
+          retention-days: 7
+
+      - name: Upload release assets
+        if: env.RELEASE_TAG != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            "${{ steps.archive.outputs.archive_path }}" \
+            "${{ steps.archive.outputs.checksum_path }}" \
+            --clobber
+
+      - name: Summarize release artifacts
+        run: |
+          {
+            echo "### Release artifacts"
+            echo
+            echo "- Archive: \`${{ steps.archive.outputs.archive_path }}\`"
+            echo "- Checksum: \`${{ steps.archive.outputs.checksum_path }}\`"
+            if [ -n "$RELEASE_TAG" ]; then
+              echo "- Uploaded to release tag: \`$RELEASE_TAG\`"
+            else
+              echo "- Dry run only: no release upload requested"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
