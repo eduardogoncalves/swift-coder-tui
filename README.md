@@ -10,6 +10,10 @@ Swift-native terminal UI toolkit for building coding assistants.
 
 SwiftCoderTUI gives you a production-ready terminal shell for coder workflows: chat scrollback, streaming responses, code/diff-friendly rendering, slash command autocomplete, approval prompts, and status/footer controls. You bring your backend stream and tool execution logic.
 
+## Demo
+
+![SwiftCoderTUI demo](assets/SwiftCoderTUI.gif)
+
 ## Why SwiftCoderTUI
 
 - Built for coding assistants, not generic text UIs.
