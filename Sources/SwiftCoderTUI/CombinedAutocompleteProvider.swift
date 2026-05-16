@@ -321,6 +321,8 @@ public final class CombinedAutocompleteProvider: AutocompleteProvider, @unchecke
         "html", "css", "scss", "sass",
         "dockerfile", "makefile", "rakefile", "podfile", "gemfile",
         "env", "gitignore", "gitattributes", "editorconfig",
+        // Image attachments (handled by vision-enabled hosts).
+        "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "tiff", "tif", "bmp",
     ]
 
     private func isAttachable(url: URL) -> Bool {
