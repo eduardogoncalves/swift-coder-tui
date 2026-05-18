@@ -57,6 +57,13 @@ public actor Renderer {
     // Cleared when setGenerating(true) is called for the next generation.
     private var isStreamingAborted: Bool = false
 
+    // Ephemeral one-line status notice rendered as a plain footer line
+    // (no spinner glyph, no `(esc · …s)` suffix). Caller is responsible for
+    // styling (ANSI escapes) and clearing via `setStatusNotice(nil)`.
+    // Intended for transient UI affordances like "🎤 Listening…" that are
+    // unrelated to model generation.
+    private var statusNotice: String? = nil
+
     // Autopilot state
     private var isAutopilot: Bool = false
 
@@ -647,6 +654,27 @@ public actor Renderer {
         streaming.currentThinking = note
     }
 
+    /// Show or clear an ephemeral one-line status notice in the footer area.
+    ///
+    /// Unlike `setThinking(_:)`, the notice is rendered as a plain line with
+    /// no spinner glyph and no `(esc · Ns)` elapsed-time suffix. It is shown
+    /// regardless of `setGenerating(_:)` state, so it is suitable for
+    /// transient UI affordances that are unrelated to model generation
+    /// (e.g. "🎤 Listening… press Enter to finish").
+    ///
+    /// The caller owns styling — pass a fully ANSI-styled string (including
+    /// reset) to control colours.
+    ///
+    /// Pass `nil` (or an empty string) to clear the notice.
+    public func setStatusNotice(_ text: String?) {
+        if let text, !text.isEmpty {
+            statusNotice = text
+        } else {
+            statusNotice = nil
+        }
+        redraw()
+    }
+
     public func advanceSpinner() {
         streaming.advanceSpinner()
     }
@@ -910,6 +938,12 @@ public actor Renderer {
                     lines.append(formatThinkLine(line))
                 }
             }
+        }
+
+        // Ephemeral status notice — plain line, no framing. Rendered above
+        // the spinner so it remains visible even while generation is active.
+        if let notice = statusNotice, !notice.isEmpty {
+            lines.append(notice)
         }
 
         // Spinner / thinking indicator
