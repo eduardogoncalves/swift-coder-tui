@@ -76,9 +76,13 @@ public actor Renderer {
     // Current model/mode tracked by index into config arrays
     private var currentModelIndex: Int
     private var currentModeIndex: Int
+    // Overrides index-based label for synthetic/dynamic models not in config.models.
+    // Cleared whenever the user cycles back to a config-indexed model.
+    private var modelLabelOverride: String? = nil
 
     private var currentMode: AppConfig.ModeConfig { config.modes[currentModeIndex] }
     private var currentModel: AppConfig.ModelConfig { config.models[currentModelIndex] }
+    private var activeModelLabel: String { modelLabelOverride ?? currentModel.label }
 
     // Pluggable autocomplete — when nil, falls back to AppConfig slash commands.
     private var autocompleteProvider: (any AutocompleteProvider)?
@@ -699,6 +703,7 @@ public actor Renderer {
 
     /// Returns the total number of configured modes.
     public func getModeCount() -> Int { config.modes.count }
+    public func getConfigModelCount() -> Int { config.models.count }
 
     public func cycleModel(reverse: Bool = false) {
         let count = config.models.count
@@ -712,9 +717,19 @@ public actor Renderer {
     }
 
     /// Set the current model by index. Clamps to valid range.
+    /// Clears any label override set by `setModelLabel(_:)`.
     public func setCurrentModelIndex(_ index: Int) {
         guard !config.models.isEmpty else { return }
         currentModelIndex = max(0, min(index, config.models.count - 1))
+        modelLabelOverride = nil
+        redraw()
+    }
+
+    /// Override the model label shown in the status bar without changing the
+    /// backing index. Use for dynamic/synthetic models not present in the
+    /// AppConfig. Pass `nil` to revert to the index-based label.
+    public func setModelLabel(_ label: String?) {
+        modelLabelOverride = label
         redraw()
     }
 
@@ -798,7 +813,7 @@ public actor Renderer {
     }
 
     /// Returns the label of the currently active model.
-    public func getCurrentModelLabel() -> String { currentModel.label }
+    public func getCurrentModelLabel() -> String { activeModelLabel }
 
     /// Returns the label of the currently active thinking mode.
     public func getCurrentModeLabel() -> String { currentMode.label }
@@ -1140,13 +1155,13 @@ public actor Renderer {
 
         var includeExtrasCount = extras.count
         while includeExtrasCount >= 0 {
-            let noTruncation = build(label: currentModel.label, includeExtrasCount: includeExtrasCount)
+            let noTruncation = build(label: activeModelLabel, includeExtrasCount: includeExtrasCount)
             if VisibleWidth.measure(noTruncation.plain) <= width {
                 return noTruncation
             }
 
             let availableLabelWidth = max(1, width - staticSuffixWidth(includeExtrasCount: includeExtrasCount))
-            let truncatedLabel = VisibleWidth.truncate(currentModel.label, maxWidth: availableLabelWidth)
+            let truncatedLabel = VisibleWidth.truncate(activeModelLabel, maxWidth: availableLabelWidth)
             let truncated = build(label: truncatedLabel, includeExtrasCount: includeExtrasCount)
             if VisibleWidth.measure(truncated.plain) <= width {
                 return truncated
