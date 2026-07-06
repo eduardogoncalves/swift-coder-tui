@@ -203,6 +203,14 @@ public enum InputHandler {
                                         default: break
                                         }
                                     }
+                                } else if extra[0] == 79, m >= 2 { // ESC O ... (SS3 — application cursor key mode)
+                                    switch extra[1] {
+                                    case 65: continuation.yield(.arrowUp)
+                                    case 66: continuation.yield(.arrowDown)
+                                    case 67: continuation.yield(.arrowRight)
+                                    case 68: continuation.yield(.arrowLeft)
+                                    default: break
+                                    }
                                 } else if extra[0] == 13 || extra[0] == 10 { // ESC + CR/LF = Alt+Enter
                                     continuation.yield(.altEnter)
                                 }
@@ -279,6 +287,14 @@ public enum InputHandler {
                             default:
                                 continuation.yield(.unknown)
                             }
+                        }
+                    } else if n >= 3, buf[0] == 27, buf[1] == 79 { // ESC O (SS3 — application cursor key mode)
+                        switch buf[2] {
+                        case 65: continuation.yield(.arrowUp)
+                        case 66: continuation.yield(.arrowDown)
+                        case 67: continuation.yield(.arrowRight)
+                        case 68: continuation.yield(.arrowLeft)
+                        default: break
                         }
                     } else if n >= 2, buf[0] == 27 { // Option/Alt + Key
                         if buf[1] == 13 || buf[1] == 10 { // Option+Enter
