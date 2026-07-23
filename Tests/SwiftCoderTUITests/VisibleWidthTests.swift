@@ -27,6 +27,28 @@ final class VisibleWidthTests: XCTestCase {
         XCTAssertEqual(VisibleWidth.measure("A你"), 3)
     }
 
+    /// Regression test: ✅/❌ (Dingbats, U+2700–U+27BF) and ⚠️ (Misc Symbols,
+    /// U+2600–U+26FF) are rendered emoji-width-2 by every terminal this app
+    /// targets, but were missing from `charWidth`'s wide-character ranges —
+    /// undercounting them as width 1 desyncs the renderer's row-count
+    /// bookkeeping (`renderedFooterLineCount` / `renderedCursorFooterRow`)
+    /// from the terminal's real cursor position by one row per occurrence.
+    /// Compounds badly across a run with many tool-result lines (every
+    /// result is prefixed with ✅ or ❌), e.g. a sub-agent chaining several
+    /// tool calls — the footer/spinner drifts further off with each one.
+    func testMeasureDingbatsAndMiscSymbolsEmojiAreWide() {
+        XCTAssertEqual(VisibleWidth.measure("✅"), 2, "check mark (U+2705)")
+        XCTAssertEqual(VisibleWidth.measure("❌"), 2, "cross mark (U+274C)")
+        XCTAssertEqual(VisibleWidth.measure("⚠️"), 2, "warning sign (U+26A0, base scalar)")
+    }
+
+    func testMeasureToolResultLinePrefixWidth() {
+        // Exactly the shape SessionModel/StreamRenderer prefix tool results
+        // with: "✅ " / "❌ " followed by text.
+        XCTAssertEqual(VisibleWidth.measure("✅ done"), 7) // 2 + 1 + "done"(4)
+        XCTAssertEqual(VisibleWidth.measure("❌ failed"), 9) // 2 + 1 + "failed"(6)
+    }
+
     // MARK: - stripAnsi
 
     func testStripAnsiCSISequence() {

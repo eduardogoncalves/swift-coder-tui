@@ -163,6 +163,27 @@ private func charWidth(_ scalar: Unicode.Scalar) -> Int {
        (0xFE30...0xFE4F).contains(v) ||   // CJK Compat Forms
        (0xFF00...0xFF60).contains(v) ||   // Fullwidth Forms
        (0xFFE0...0xFFE6).contains(v) ||   // Fullwidth Signs
+       (0x2600...0x26FF).contains(v) ||   // Misc Symbols (☀️☁️⚠️ etc.) — rendered
+                                           // as emoji-width-2 by every terminal
+                                           // this app targets; missing this range
+                                           // undercounted every "⚠️ warning" line
+                                           // by 1 column.
+       (0x2700...0x27BF).contains(v) ||   // Dingbats (✅❌✂️✈️ etc.) — same
+                                           // emoji-width-2 rendering; missing this
+                                           // undercounted every tool-result line
+                                           // (✅/❌ prefix) by 1 column, which
+                                           // compounds across a run's tool calls:
+                                           // the renderer's row-count bookkeeping
+                                           // (renderedFooterLineCount /
+                                           // renderedCursorFooterRow) drifts by 1
+                                           // row further behind the real terminal
+                                           // cursor position on every such line,
+                                           // so the footer/spinner block is placed
+                                           // progressively further off from where
+                                           // it should be the longer a run with
+                                           // many tool calls (e.g. a sub-agent
+                                           // iterating several tool calls in a
+                                           // row) goes on.
        (0x1F300...0x1F64F).contains(v) || // Misc Symbols / Emoji
        (0x1F680...0x1F6FF).contains(v) || // Transport / Map
        (0x1F900...0x1F9FF).contains(v) || // Supplemental Symbols / Pictographs
